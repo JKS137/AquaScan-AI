@@ -9,6 +9,7 @@ export interface UserProfile {
 }
 
 export type ContaminationLevel = 'safe' | 'moderate' | 'unsafe';
+export type WaterType = 'potable' | 'environmental' | 'industrial' | 'unknown';
 
 export interface WaterReport {
   id: string;
@@ -20,6 +21,7 @@ export interface WaterReport {
     lng: number;
     address?: string;
   };
+  waterType: WaterType;
   contaminationLevel: ContaminationLevel;
   aiResult: {
     confidence: number;

@@ -1,5 +1,17 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Camera, RefreshCcw, FlaskConical, AlertTriangle, CheckCircle2, Info, ChevronRight, Send, Loader2 } from 'lucide-react';
+import { 
+  Camera, 
+  RefreshCcw, 
+  FlaskConical, 
+  AlertTriangle, 
+  CheckCircle2, 
+  Info, 
+  ChevronRight, 
+  Send, 
+  Loader2,
+  ZoomIn,
+  X 
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { analyzeWaterQuality, WaterAnalysisResult } from '../lib/gemini';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -16,6 +28,7 @@ export function CameraView({ profile }: { profile: UserProfile | null }) {
   const [analysis, setAnalysis] = useState<WaterAnalysisResult | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [isFullscreenZoom, setIsFullscreenZoom] = useState(false);
 
   useEffect(() => {
     startCamera();
@@ -102,6 +115,7 @@ export function CameraView({ profile }: { profile: UserProfile | null }) {
           lat: pos.coords.latitude,
           lng: pos.coords.longitude
         },
+        waterType: analysis.waterType,
         contaminationLevel: analysis.contaminationLevel,
         aiResult: {
           confidence: analysis.confidence,
@@ -178,8 +192,20 @@ export function CameraView({ profile }: { profile: UserProfile | null }) {
           >
             {/* Results UI */}
             <div className="px-6 md:px-10 space-y-6 pb-20">
-              <div className="relative aspect-video rounded-xl overflow-hidden shadow-sm border border-border bg-white">
+              <div 
+                className="relative aspect-video rounded-xl overflow-hidden shadow-sm border border-border bg-white cursor-zoom-in group"
+                onClick={() => setIsFullscreenZoom(true)}
+              >
                 <img src={capturedImage} className="w-full h-full object-cover" />
+                
+                {/* Zoom Hint Overlay */}
+                <div className="absolute top-4 right-4 bg-dark/40 backdrop-blur-md p-2 rounded-lg text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                   <ZoomIn className="w-5 h-5" />
+                </div>
+                <div className="absolute bottom-4 left-4 bg-dark/40 backdrop-blur-md px-3 py-1 rounded-lg text-white text-[10px] uppercase font-bold tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
+                   Click to Inspect Details
+                </div>
+
                 {analyzing && (
                   <div className="absolute inset-0 bg-dark/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center">
                     <div className="relative">
@@ -191,6 +217,41 @@ export function CameraView({ profile }: { profile: UserProfile | null }) {
                   </div>
                 )}
               </div>
+
+              {/* Fullscreen Zoom Modal */}
+              <AnimatePresence>
+                {isFullscreenZoom && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-[100] bg-dark/95 flex flex-col items-center justify-center p-4 md:p-12"
+                  >
+                    <button 
+                      onClick={() => setIsFullscreenZoom(false)}
+                      className="absolute top-6 right-6 p-4 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors"
+                    >
+                      <X className="w-8 h-8" />
+                    </button>
+                    
+                    <div className="w-full h-full flex items-center justify-center">
+                      <motion.img 
+                        initial={{ scale: 0.9, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        src={capturedImage} 
+                        className="max-w-full max-h-full object-contain rounded-lg shadow-2xl border border-white/10"
+                      />
+                    </div>
+                    
+                    <div className="absolute bottom-12 bg-white/10 backdrop-blur-xl border border-white/10 p-6 rounded-2xl text-center max-w-md">
+                      <p className="text-white font-bold mb-1">Detailed Inspection Mode</p>
+                      <p className="text-gray-400 text-xs uppercase tracking-widest font-bold">
+                        Analyze high-resolution capture for physical sediments
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {analysis && (
                 <motion.div 
@@ -213,7 +274,7 @@ export function CameraView({ profile }: { profile: UserProfile | null }) {
                     <div>
                       <div className="flex items-center gap-3">
                         <h3 className="text-xl font-bold capitalize text-text-main tracking-tight">
-                          {analysis.contaminationLevel} Water
+                          {analysis.contaminationLevel} {analysis.waterType !== 'unknown' ? analysis.waterType : 'Water'}
                         </h3>
                         <span className={cn(
                           "badge-geometric",
